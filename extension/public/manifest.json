@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Business Data Extractor",
+  "version": "1.0.0",
+  "description": "Extract and manage business contact data from websites.",
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Extract Data"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ]
+}
