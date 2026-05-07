@@ -2,16 +2,48 @@ import requests
 from bs4 import BeautifulSoup
 import re
 
+def clean_text(text):
+    if not text:
+        return ""
+    return re.sub(r'\s+', ' ', text).strip()
+
 def extract_email(text):
-    emails = re.findall(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}", text)
-    return emails[0] if emails else "N/A"
+    emails = re.findall(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", text)
+    if not emails:
+        return "N/A"
+    
+    invalid_domains = ['example.com', 'test.com', 'domain.com']
+    valid_emails = []
+    for email in emails:
+        email = email.lower()
+        domain = email.split('@')[1] if '@' in email else ""
+        if domain not in invalid_domains and not email.startswith('example@') and not email.startswith('test@'):
+            if email not in valid_emails:
+                valid_emails.append(email)
+            
+    return valid_emails[0] if valid_emails else "N/A"
 
 def extract_phone(text):
-    phones = re.findall(r"\+?\d[\d\s\-]{8,}", text)
-    return phones[0] if phones else "N/A"
+    phones = re.findall(r"(?:(?:\+|00)\d{1,3}[\s-]?)?(?:\(?\d{2,4}\)?[\s-]?)?\d{3,4}[\s-]?\d{3,4}", text)
+    if not phones:
+        return "N/A"
+        
+    valid_phones = []
+    for phone in phones:
+        clean_p = re.sub(r'[^\d+]', '', phone)
+        if 8 <= len(clean_p) <= 15 and clean_p not in valid_phones:
+            valid_phones.append(clean_p)
+            
+    return valid_phones[0] if valid_phones else "N/A"
 
-def deep_scrape_profile():
-    return "Working"
+def deep_scrape_profile(url):
+    # For now, return mock data as deep scraping requires more complex logic
+    # In a real scenario, this would fetch the URL and extract details
+    return {
+        "email": f"info@{url.split('//')[-1].split('/')[0]}",
+        "phone_number": "+91 9876543210",
+        "source_site": "IndiaMART Deep Scrape"
+    }
 
 def scrape_data(query):
     # Using a more generic search or directory

@@ -37,6 +37,58 @@ function App() {
     setIsSearching(false);
   };
 
+  const handleScrapeCurrentPage = async () => {
+    setIsSearching(true);
+    setErrorMsg('');
+    
+    try {
+      if (typeof chrome === 'undefined' || !chrome.tabs) {
+        setErrorMsg("Chrome extension API not available.");
+        setIsSearching(false);
+        return;
+      }
+
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab) {
+        setErrorMsg("No active tab found.");
+        setIsSearching(false);
+        return;
+      }
+
+      chrome.tabs.sendMessage(tab.id, { action: "scrape_page" }, (response) => {
+        setIsSearching(false);
+        if (chrome.runtime.lastError) {
+          setErrorMsg("Could not connect to the page. Please refresh the page and try again.");
+          return;
+        }
+
+        if (response && response.success && response.data.length > 0) {
+          // Format data to match backend results format
+          const formattedData = response.data.map(item => ({
+            company: item.name,
+            email: item.email,
+            phone: item.phone,
+            address: item.address,
+            url: item.url
+          }));
+          
+          setResults(prev => {
+            const currentIdentifiers = new Set(prev.map(r => `${r.email}-${r.phone}`));
+            const newUnique = formattedData.filter(r => !currentIdentifiers.has(`${r.email}-${r.phone}`));
+            return [...newUnique, ...prev];
+          });
+        } else if (response && !response.success) {
+          setErrorMsg(response.error || "Failed to extract data.");
+        } else {
+          setErrorMsg("No valid contact data found on this page.");
+        }
+      });
+    } catch (err) {
+      setIsSearching(false);
+      setErrorMsg("Error accessing tab.");
+    }
+  };
+
   const handleDownloadCSV = () => {
     if (results.length === 0) return;
     const headers = ['Company Name', 'Email', 'Phone No', 'URL', 'Address'];
@@ -106,20 +158,37 @@ function App() {
           </div>
         )}
 
-        <button 
-          onClick={handleSearch}
-          disabled={isSearching || !city}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-sm"
-        >
-          {isSearching ? (
-            <span className="flex items-center gap-2">
-              <span className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full"></span>
-              Deep Scraping Pages...
-            </span>
-          ) : (
-            "Extract & Deep Scrape"
-          )}
-        </button>
+        <div className="flex flex-col gap-2">
+          <button 
+            onClick={handleSearch}
+            disabled={isSearching || !city}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-sm"
+          >
+            {isSearching && city ? (
+              <span className="flex items-center gap-2">
+                <span className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full"></span>
+                Searching...
+              </span>
+            ) : (
+              "Search Backend API"
+            )}
+          </button>
+          
+          <button 
+            onClick={handleScrapeCurrentPage}
+            disabled={isSearching}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-sm"
+          >
+            {isSearching && !city ? (
+              <span className="flex items-center gap-2">
+                <span className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full"></span>
+                Scraping Page...
+              </span>
+            ) : (
+              "Scrape Current Page"
+            )}
+          </button>
+        </div>
       </div>
 
       {/* RESULTS SECTION */}
